@@ -1,0 +1,493 @@
+/* ==========================================================================
+   HERO — the fixed "Saigon, 5am" stage + everything scoped to .hero*
+   Owned by the hero track (js/hero.js). Consumers only from tokens.css.
+
+   Cascade order, back to front:
+     .hero-stage  → CSS fallback gradient + the still poster (assets/hero-poster.jpg)
+       #hero-canvas → live WebGL scene, opacity 0 until the loop has actually started
+       .hero-vignette → in-shader grade's CSS twin: multiply corner falloff
+       .hero-scrim   → the legibility floor: text always sits on the darkest part
+     .hero          → the copy, z-index 1, always above the stage
+   ========================================================================== */
+
+/* --------------------------------------------------------------- the stage */
+
+.hero-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  isolation: isolate; /* keeps vignette/scrim blends off the page content */
+  contain: strict;
+
+  /* ---- Fallback that stands alone: no JS, no WebGL, or poster missing ---- */
+  background-color: var(--roast-950);
+  background-image:
+    radial-gradient(78% 62% at 68% 30%, rgb(212 86 42 / 0.15), transparent 64%),
+    radial-gradient(96% 70% at 34% 84%, rgb(143 53 23 / 0.16), transparent 72%),
+    radial-gradient(120% 90% at 50% 118%, rgb(239 107 52 / 0.1), transparent 70%),
+    linear-gradient(177deg, #271710 0%, #1d120c 44%, #150d09 74%, #110a07 100%);
+  background-size: cover;
+  background-position: 58% 50%;
+  background-repeat: no-repeat;
+  transform: translate3d(0, var(--hero-par, 0px), 0) scale(var(--hero-scale, 1));
+  opacity: var(--hero-dim, 1);
+  /* Set to `hidden` by hero.js once the hero is fully scrolled away. The stage
+     is position:fixed, so while it is still painted it sits ON TOP of every
+     reading section below it. It must therefore stop painting entirely, not
+     merely fade. */
+  visibility: var(--hero-vis, visible);
+  will-change: transform, opacity;
+}
+
+/* The still frame. Deep in the loop, not at t=0. Kept as a separate layer so
+   the CSS fallback gradient underneath is still there if the file is missing. */
+.hero-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: url("../assets/hero-poster.jpg");
+  background-size: cover;
+  background-position: 58% 52%;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 1100ms var(--ease-out);
+}
+
+/* Portrait viewports get their own still, re-framed for a tall frame: the phin
+   in the upper third with the city and the dawn band below it. Cover-cropping
+   the landscape still to a phone leaves a near-empty vertical slice.
+
+   The image is held in a custom property so the `data-hero-poster` switch below
+   can pick whichever of the two matches the viewport. */
+:root {
+  --hero-poster-image: url("../assets/hero-poster.jpg");
+}
+@media (max-aspect-ratio: 21 / 20) {
+  :root {
+    --hero-poster-image: url("../assets/hero-poster-mobile.jpg");
+  }
+  .hero-stage::before {
+    background-image: var(--hero-poster-image);
+    background-position: 50% 30%;
+  }
+}
+
+/* The poster is a FALLBACK, not a layer under the animation: it is only
+   meaningful when the scene will not play. Applying it unconditionally made
+   every visitor download 104KB of JPEG that was painted at opacity 0 behind
+   the live canvas the moment the scene started — measured, the request fired on
+   a motion-allowed load as well as under reduce.
+
+   So the image is switched on by `data-hero-poster`, which hero.js sets ONLY
+   when it actually needs the still (reduced motion, WebGL missing, context
+   lost, or the first-frame watchdog giving up). The happy path therefore never
+   fetches the JPEG, and a device that falls back still gets a real image.
+   Setting it from CSS on the no-preference path instead once produced a fully
+   black hero: the scene fell back to the poster, and the poster had been turned
+   off for exactly the visitors who reached that path. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-stage::before {
+    background-image: none;
+  }
+  .hero-stage[data-hero-poster]::before {
+    background-image: var(--hero-poster-image);
+  }
+}
+  }
+}
+
+/* Canvas only exists as an enhancement of the poster. */
+.hero-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+  transition: opacity 1100ms var(--ease-out);
+}
+
+/* ---- Poster vs canvas: exactly one is visible, and there is always one ---
+   The poster is the ONLY thing that renders when the scene cannot run —
+   WebGL missing, context lost, or the first-frame watchdog giving up on a slow
+   device. Getting this backwards once produced a completely black hero, so the
+   rule is stated explicitly:
+
+     data-hero-live="1"  → the canvas is showing → poster hidden
+     otherwise           → the poster is showing → canvas hidden
+
+   `data-hero-poster` is set by hero.js only when the poster is genuinely needed
+   (reduced motion, or a failed/absent scene). It is deliberately NOT set on the
+   happy path, which is what keeps the 104KB JPEG from being fetched by visitors
+   who will never see it. If a browser ignores the attribute, the gradient below
+   still stands in. */
+
+/* Live: the loop is running and has drawn at least one real frame. */
+[data-motion="full"] .hero-stage[data-hero-live="1"]::before {
+  opacity: 0;
+}
+[data-motion="full"] .hero-stage[data-hero-live="1"] .hero-canvas {
+  opacity: 1;
+}
+
+/* Reduced motion: never show a canvas, even if JS got as far as creating one. */
+[data-motion="reduced"] .hero-canvas {
+  display: none;
+}
+/* Safety net: motion switched off after we started — put the poster back. */
+[data-motion="reduced"] .hero-stage::before {
+  opacity: 1;
+}
+
+/* Scene failed or never started, motion is still allowed: the canvas has
+   nothing in it, so the poster must be what we see. */
+[data-motion="full"] .hero-stage:not([data-hero-live="1"])::before {
+  opacity: 1;
+}
+[data-motion="full"] .hero-stage:not([data-hero-live="1"]) .hero-canvas {
+  opacity: 0;
+}
+
+/* ---- Vignette: pure multiply, so it can only ever darken ---------------- */
+.hero-stage .hero-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: radial-gradient(
+    124% 104% at 60% 40%,
+    rgb(255 255 255 / 0) 30%,
+    rgb(24 14 9 / 0.34) 68%,
+    rgb(16 9 6 / 0.66) 100%
+  );
+  mix-blend-mode: multiply;
+}
+
+/* ---- Scrim: the legibility contract -------------------------------------
+   `.hero-stage`-prefixed throughout, so these rules win at equal specificity
+   against the bare `.hero-scrim` rules further up in this same file, no matter
+   what gets inlined. Tokens/base/hero are inlined into index.html by
+   tools/build-css.mjs; edit HERE and re-run it, never edit index.html's <style>.
+
+   Stops reach much further right than a two-line headline needed: the copy is
+   four lines of display type at --step-4, so "work, and what's actually going"
+   lands around 60% of the frame width. The old mid-stops (0.26 at 56%) left
+   that band at ~8.8:1. */
+.hero-stage .hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background:
+    /* Copy plate: a soft darkening centred on the text block itself. This is
+       how you would actually light a still for a headline, and it is far more
+       efficient than extending the linear ramp — the ramp has to stay heavy
+       all the way to 74% to protect the last word of the h1, which flattens
+       the whole left half. The plate costs contrast only where the copy is. */
+    radial-gradient(
+      66% 56% at 33% 34%,
+      rgb(14 7 4 / 0.86) 0%,
+      rgb(14 7 4 / 0.64) 38%,
+      rgb(14 7 4 / 0.2) 64%,
+      rgb(14 7 4 / 0) 84%
+    ),
+    linear-gradient(
+      96deg,
+      rgb(17 10 7 / 0.86) 0%,
+      rgb(17 10 7 / 0.76) 22%,
+      rgb(17 10 7 / 0.56) 38%,
+      rgb(17 10 7 / 0.3) 52%,
+      rgb(17 10 7 / 0.12) 64%,
+      rgb(17 10 7 / 0.04) 74%,
+      rgb(17 10 7 / 0.01) 84%
+    ),
+    linear-gradient(
+      to top,
+      rgb(15 9 6 / 0.8) 0%,
+      rgb(15 9 6 / 0.36) 18%,
+      rgb(15 9 6 / 0) 46%
+    );
+}
+
+/* Poster-only mode gets no canvas, so it needs no crossfade. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-stage::before,
+  .hero-canvas {
+    transition: none;
+  }
+  .hero-stage {
+    transform: none;
+  }
+}
+
+/* Touch / cheap devices: no parallax, no scale settle. The fade-out and the
+   visibility gate still apply — they are not decoration, they stop a fixed
+   layer painting over the article. */
+@media (hover: none), (pointer: coarse) {
+  .hero-stage {
+    transform: none;
+  }
+}
+
+/* ==========================================================================
+   HERO COPY
+   ========================================================================== */
+
+.hero {
+  position: relative;
+  z-index: 1;
+  min-height: var(--hero-h);
+  display: grid;
+  align-content: center;
+  padding-block: clamp(5.5rem, 3rem + 9vh, 8.5rem) clamp(3.5rem, 2rem + 7vh, 6rem);
+  /* The stage is fixed; hero must not create a containing block for it. */
+}
+
+.hero__inner {
+  width: min(100% - var(--shell-pad) * 2, var(--shell-max));
+  margin-inline: auto;
+  max-width: 62rem;
+}
+
+/* ---- Eyebrow ------------------------------------------------------------ */
+.hero__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  margin: 0 0 clamp(1.1rem, 0.6rem + 1.4vw, 2rem);
+  /* --text-dim, not --text-mute. The muted step is only 4.5:1 over the page's
+     flat background; against the scene it measured 2.73:1 in portrait, which
+     is real text failing WCAG AA. One step up keeps the hierarchy and passes. */
+  color: var(--text-dim);
+  font-size: var(--step--1);
+  font-weight: 500;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+}
+
+.hero__pip {
+  inline-size: 0.44em;
+  block-size: 0.44em;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ember) 18%, transparent);
+}
+
+/* ---- Title -------------------------------------------------------------- */
+.hero__title {
+  display: grid;
+  gap: clamp(0.9rem, 0.4rem + 1.4vw, 1.6rem);
+  margin: 0;
+  max-width: 46rem;
+}
+
+.hero__display {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--step-4);
+  line-height: 1.02;
+  letter-spacing: var(--tracking-display);
+  color: var(--text);
+  text-wrap: balance;
+  max-width: 15ch;
+  /* Off-white with the faintest warmth lift so it never looks like plain #fff. */
+  text-shadow: 0 1px 26px rgb(12 7 4 / 0.55);
+}
+
+.hero__lede {
+  display: block;
+  max-width: 44ch;
+  color: var(--text-dim);
+  font-size: var(--step-1);
+  line-height: 1.56;
+  text-wrap: pretty;
+  text-shadow: 0 1px 18px rgb(12 7 4 / 0.5);
+}
+
+/* ---- Actions ------------------------------------------------------------ */
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(0.7rem, 0.35rem + 1vw, 1rem);
+  margin-top: clamp(1.6rem, 1rem + 2.4vw, 2.6rem);
+}
+
+/* ---- Hint --------------------------------------------------------------- */
+.hero__hint {
+  max-width: 48ch;
+  margin-top: clamp(1rem, 0.7rem + 1vw, 1.5rem);
+  color: var(--text-mute);
+  font-size: var(--step--1);
+  line-height: 1.5;
+  text-shadow: 0 1px 14px rgb(12 7 4 / 0.6);
+}
+
+/* ==========================================================================
+   SOUND TOGGLE
+   Styled here only because it is scoped to the hero and hero.css is the only
+   hero stylesheet in the document. The audio track owns js/audio.js + state.
+   ========================================================================== */
+
+.sound-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  min-height: 3rem;
+  padding: 0.85em 1.1em;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-pill);
+  color: var(--text-mute);
+  font-size: var(--step--1);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.sound-toggle__viz {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  block-size: 0.85em;
+}
+
+.sound-toggle__viz i {
+  display: block;
+  inline-size: 2px;
+  block-size: 30%;
+  background: currentColor;
+  border-radius: 1px;
+  transition: block-size 260ms var(--ease-inout);
+}
+
+.sound-toggle[data-on="true"] {
+  color: var(--text-dim);
+  border-color: color-mix(in oklab, var(--ember) 34%, transparent);
+}
+
+/* When sound is on, the four bars keep breathing — a quiet confirmation that
+   something is actually running. Staggered so it reads as one waveform. */
+.sound-toggle[data-on="true"] .sound-toggle__viz i {
+  animation: sound-bar 1900ms var(--ease-inout) infinite alternate;
+  animation-delay: calc(var(--i, 0) * 240ms);
+  border-radius: 1px;
+}
+.sound-toggle[data-on="true"] .sound-toggle__viz i:nth-child(1) { --i: 0; }
+.sound-toggle[data-on="true"] .sound-toggle__viz i:nth-child(2) { --i: 1; }
+.sound-toggle[data-on="true"] .sound-toggle__viz i:nth-child(3) { --i: 2; }
+.sound-toggle[data-on="true"] .sound-toggle__viz i:nth-child(4) { --i: 3; }
+
+@keyframes sound-bar {
+  0% { block-size: 18%; }
+  100% { block-size: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sound-toggle__viz i {
+    transition: none;
+  }
+  /* MUST match the specificity of `.sound-toggle[data-on="true"] .sound-toggle__viz i`
+     above — that is (0,3,1), this alone would be (0,1,1), so the infinite
+     `sound-bar` would win regardless of source order and the bars would keep
+     breathing for a user who asked them not to. */
+  .sound-toggle[data-on="true"] .sound-toggle__viz i {
+    animation: none;
+    transition: none;
+  }
+  /* Hold a still, legible "on" state instead of nothing at all. */
+  .sound-toggle[data-on="true"] .sound-toggle__viz i { block-size: 100%; }
+  .sound-toggle[data-on="true"] .sound-toggle__viz i:nth-child(2) { block-size: 62%; }
+  .sound-toggle[data-on="true"] .sound-toggle__viz i:nth-child(3) { block-size: 88%; }
+  .sound-toggle[data-on="true"] .sound-toggle__viz i:nth-child(4) { block-size: 44%; }
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+/* ---- portrait scrim: driven by the FRAMING, not by width --------------
+   Portrait framing activates at asp < 1.05. Scoping this to max-width instead
+   left 768x1024 with portrait framing AND the horizontal scrim — two media
+   conditions answering to two different questions, and the headline landed on
+   the phin at 1.09:1. The scrim now switches on the same condition the
+   framing does, so they cannot disagree.
+   The 0.34 stop at 30% IS the headline band; at 0.34 it is arithmetically
+   incapable of passing, hence the 0.62 floor. */
+@media (max-aspect-ratio: 21 / 20) {
+  .hero-stage .hero-scrim {
+    background:
+      radial-gradient(
+        78% 30% at 50% 24%,
+        rgb(15 8 5 / 0.5) 0%,
+        rgb(15 8 5 / 0) 76%
+      ),
+      linear-gradient(
+        178deg,
+        rgb(14 8 5 / 0.82) 0%,
+        rgb(14 8 5 / 0.74) 12%,
+        rgb(15 9 6 / 0.64) 26%,
+        rgb(15 9 6 / 0.54) 42%,
+        rgb(16 9 6 / 0.68) 62%,
+        rgb(15 9 6 / 0.9) 100%
+      );
+  }
+}
+
+/* On a phone the copy has to win the whole frame. Layout-only tweaks stay on a
+   width query; the scrim above stays on the aspect query. */
+@media (max-width: 47.99rem) {
+  .hero-stage .hero-vignette {
+    background: radial-gradient(
+      132% 96% at 50% 40%,
+      rgb(255 255 255 / 0) 24%,
+      rgb(22 13 8 / 0.44) 70%,
+      rgb(15 9 6 / 0.78) 100%
+    );
+  }
+  .hero__inner {
+    max-width: none;
+  }
+}
+
+/* Short landscape (a laptop with the browser chrome eating the height). */
+@media (max-height: 34rem) and (orientation: landscape) {
+  .hero {
+    align-content: end;
+    padding-block: 5rem 2.5rem;
+  }
+  .hero__hint {
+    display: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .hero-scrim {
+    background:
+      linear-gradient(
+        96deg,
+        rgb(12 7 5 / 0.96) 0%,
+        rgb(12 7 5 / 0.9) 24%,
+        rgb(12 7 5 / 0.68) 44%,
+        rgb(12 7 5 / 0.24) 64%,
+        rgb(12 7 5 / 0.06) 82%
+      ),
+      linear-gradient(to top, rgb(12 7 5 / 0.86), rgb(12 7 5 / 0) 52%);
+  }
+  .hero__lede,
+  .hero__hint {
+    color: var(--text);
+  }
+}
+
+@media print {
+  .hero-stage {
+    display: none;
+  }
+}

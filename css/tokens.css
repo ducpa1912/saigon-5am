@@ -1,0 +1,123 @@
+/* ==========================================================================
+   DESIGN TOKENS — the single contract every stylesheet builds from.
+   Palette: dark roast brown · off-white paper · burnt orange.
+   ========================================================================== */
+
+@font-face {
+  font-family: "Archivo Black";
+  src: url("../assets/fonts/archivo-black-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("../assets/fonts/inter-400-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("../assets/fonts/inter-500-latin.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  /* ---- Core palette ---------------------------------------------------- */
+  --roast-950: #120b07; /* deepest ground */
+  --roast-900: #1a100b; /* page background */
+  --roast-850: #221510; /* raised surface */
+  --roast-800: #2b1a13; /* card surface */
+
+  --paper: #f4ece1; /* off-white paper — primary text */
+  --paper-dim: #d9cdbe; /* secondary text */
+  --paper-mute: #a2937f; /* meta text, still 4.5:1+ on roast-900 */
+
+  --ember: #d4562a; /* burnt orange — accent */
+  --ember-hot: #ef6b34; /* accent, hover / glow */
+
+  /* ---- Semantic -------------------------------------------------------- */
+  /* Only the tokens that are actually aliased somewhere live here. --roast-700,
+     --roast-600, --ember-deep and --surface were defined but never referenced
+     by any rule, so they were removed rather than left to look load-bearing. */
+  --bg: var(--roast-900);
+  --text: var(--paper);
+  --text-dim: var(--paper-dim);
+  --text-mute: var(--paper-mute);
+  --accent: var(--ember);
+  --line: color-mix(in oklab, var(--paper) 14%, transparent);
+  --line-soft: color-mix(in oklab, var(--paper) 8%, transparent);
+
+  /* ---- Type ------------------------------------------------------------ */
+  --font-display: "Archivo Black", "Arial Black", system-ui, sans-serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+
+  /* Fluid scale, 390px → 1440px, clamps so nothing overflows on small phones */
+  --step--1: clamp(0.78rem, 0.74rem + 0.18vw, 0.89rem);
+  --step-0: clamp(1rem, 0.95rem + 0.24vw, 1.13rem);
+  --step-1: clamp(1.2rem, 1.09rem + 0.52vw, 1.55rem);
+  --step-2: clamp(1.44rem, 1.22rem + 1.02vw, 2.15rem);
+  --step-3: clamp(1.73rem, 1.34rem + 1.8vw, 3rem);
+  --step-4: clamp(2.07rem, 1.42rem + 2.95vw, 4.2rem);
+
+  --leading-body: 1.62;
+  --leading-tight: 1.06;
+  --tracking-display: -0.022em;
+
+  /* ---- Space ----------------------------------------------------------- */
+  --shell-max: 78rem;
+  --shell-pad: clamp(1.25rem, 0.6rem + 3.2vw, 4.5rem);
+  --section-gap: clamp(5.5rem, 3rem + 11vw, 11rem);
+
+  /* ---- Radius ---------------------------------------------------------- */
+  /* --shadow-lift and --shadow-glow were defined and never used; every shadow
+     on the page is written inline against its own surface. Remove them rather
+     than leave a shadow recipe nobody opted into. */
+  --r-sm: 4px;
+  --r-md: 10px;
+  --r-lg: 18px;
+  --r-pill: 999px;
+
+  /* ---- Motion ----------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 160ms;
+  --dur-mid: 420ms;
+
+  /* ---- Grain ------------------------------------------------------------ */
+  /* `overlay` scales by the backdrop, and the page ground is #1a100b
+     (luminance .078), which crushes the whole tile to +/- one 8-bit level —
+     measured at sd 0.002 against grain-off, i.e. mathematically invisible.
+     `screen` is backdrop-independent and only lightens, so the grain lands in
+     the shadows and leaves the card art and the ember button alone. 0.03
+     measures ~+/-5/255: clearly film, never noise. */
+  --grain-opacity: 0.03;
+  --grain-blend: screen;
+  /* The tile is 96x96 and is magnified to 180px here. Upscaled noise is
+     indistinguishable from native noise at 3% over dark ground, and
+     incompressible random data scales linearly with pixel count: 8KB instead
+     of 27.8KB for a file nothing can see the difference in. */
+  --grain-size: 180px;
+
+  /* ---- Hero ------------------------------------------------------------- */
+  --hero-h: 100svh;
+}
+
+/* Dark, warm, low-glare surfaces for long-form reading. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --line: color-mix(in oklab, var(--paper) 30%, transparent);
+  }
+}

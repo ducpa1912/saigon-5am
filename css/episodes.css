@@ -1,0 +1,491 @@
+/* ==========================================================================
+   EPISODE CARDS — "Latest episodes"
+   Owned by the episode-cards track.
+
+   The markup is spans, not divs:
+     ul.cards > li.card > a.card__link
+                    > span.card__thumb[aria-hidden]
+                        > span.card__thumb-art   (empty; painted here)
+                        > span.card__play
+                    > span.card__body
+                        > span.card__title       (the real content)
+                        > span.card__meta        ("YouTube")
+
+   Layout: an asymmetric 1-then-2 editorial split. The first card takes the
+   whole row and turns on its side so its (longest) title gets display size;
+   the other two sit in a calm 2-up below at --step-1. Every frame is 16:9.
+
+   The three thumbnails are hand-composed inline SVG, inlined as data URIs so
+   they cost zero network requests and zero JS. They share one grammar: a warm
+   key from the upper-left, a horizon low in the frame, a hard architectural
+   edge, near-vertical fine texture, the same vignette and the same grain.
+   ========================================================================== */
+
+#episodes .cards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--cards-gap, clamp(1rem, 0.7rem + 1vw, 1.6rem));
+  /* NO margin-block-start here. This rule collided with `.section__title`'s own
+     margin-block-end and won outright, so the distance from a section head to
+     its first content was 56.6px in #episodes against 46.4px in the other three
+     sections — and `.section__title`'s own comment calls that "the single most
+     important distance on the page after the section gap". One value, from one
+     place. */
+}
+
+@media (min-width: 56rem) {
+  #episodes .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* The first card takes the whole row and lies on its side. */
+  #episodes .cards > .card:first-child {
+    grid-column: 1 / -1;
+  }
+
+  #episodes .cards > .card:first-child .card__link {
+    grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr);
+    align-items: stretch;
+    column-gap: clamp(1.4rem, 0.9rem + 1.7vw, 2.6rem);
+  }
+}
+
+/* The 896–1088px band is the weakest part of this layout. The lead card's
+   1.62fr art column narrows to 275–345px while its title stays at --step-2
+   (28.7–30.6px), so the longest title on the page ran to FOUR lines in a narrow
+   slot with a poor rag — line 2 broke after the article "the". Measured across
+   the band: 4 lines at 896/960/1024/1088, only dropping to 3 at 1152.
+   Widening the art column to 1.3fr gives the title a usable measure and fixes
+   two of the three widths outright (3 lines, last-line fill 0.97/0.93). */
+@media (min-width: 56rem) and (max-width: 68rem) {
+  #episodes .cards > .card:first-child .card__link {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  }
+
+  #episodes .cards > .card:first-child .card__body {
+    display: grid;
+    align-content: center;
+    padding: 1.6rem 1.6rem 1.6rem 0;
+  }
+
+  #episodes .cards > .card:first-child .card__meta {
+    /* Sits directly under the title, not pinned to the card foot. */
+    margin-top: 0;
+    padding-top: 1rem;
+  }
+}
+
+/* ---------------------------------------------------------------- the card */
+
+#episodes .card {
+  --card-line: color-mix(in oklab, var(--paper) 9%, transparent);
+  --card-line-hi: color-mix(in oklab, var(--paper) 19%, transparent);
+  --card-shadow: 0 1px 0 color-mix(in oklab, var(--paper) 6%, transparent) inset,
+    0 18px 40px -24px rgb(0 0 0 / 0.9);
+  --card-shadow-hi: 0 1px 0 color-mix(in oklab, var(--paper) 10%, transparent) inset,
+    0 28px 52px -26px rgb(0 0 0 / 0.95);
+
+  position: relative;
+  border: 1px solid var(--card-line);
+  border-radius: var(--r-lg);
+  background: linear-gradient(
+    176deg,
+    color-mix(in oklab, var(--paper) 5%, var(--roast-800)) 0%,
+    var(--roast-800) 42%,
+    color-mix(in oklab, var(--roast-850) 78%, var(--roast-800)) 100%
+  );
+  box-shadow: var(--card-shadow);
+  transition:
+    border-color var(--dur-mid) var(--ease-out),
+    box-shadow var(--dur-mid) var(--ease-out);
+}
+
+#episodes .card__link {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  /* `auto 1fr`, not two implicit `auto` rows. With two autos the leftover height
+     goes to the LAST row, so the two 2-up cards' titles ended up 14.5px out of
+     alignment with each other whenever their line counts differed — measured at
+     1440. This pins the title row and lets the meta row absorb the slack. */
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  border-radius: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: color-mix(in oklab, var(--ember) 26%, transparent);
+}
+
+/* base.css sets a 4px radius on the ring; on a card it must follow the card. */
+#episodes .card__link:focus-visible {
+  outline: 2px solid var(--ember-hot);
+  outline-offset: 3px;
+  border-radius: inherit;
+}
+
+/* ------------------------------------------------------------------ thumb */
+
+#episodes .card__thumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  isolation: isolate;
+  /* Hug the card: rounded on the sides that meet the card's own corners. */
+  border-radius: calc(var(--r-lg) - 1px) calc(var(--r-lg) - 1px) 0 0;
+  background: var(--roast-950);
+}
+
+/* Single column: a 16:9 frame at tablet width grows taller than the title it
+   is supposed to introduce. Cap it — the frame goes cinematic, the type stays
+   the hero. `cover` + `slice` on the art means the extra crop is graceful. */
+@media (max-width: 55.99rem) {
+  #episodes .card__thumb {
+    max-block-size: min(52vw, 20rem);
+  }
+}
+
+@media (min-width: 56rem) {
+  #episodes .cards > .card:first-child .card__thumb {
+    border-radius: calc(var(--r-lg) - 1px) 0 0 calc(var(--r-lg) - 1px);
+  }
+}
+
+/* Shared vignette + a top scrim. Identical on all three frames. */
+#episodes .card__thumb::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background-image:
+    radial-gradient(
+      138% 122% at 46% 42%,
+      transparent 44%,
+      color-mix(in oklab, var(--roast-950) 26%, transparent) 84%,
+      color-mix(in oklab, var(--roast-950) 52%, transparent) 100%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--roast-950) 34%, transparent) 0%,
+      transparent 18%
+    );
+}
+
+/* The page's own film grain, laid into the frame so the thumbs belong to it. */
+#episodes .card__thumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0.4;
+  mix-blend-mode: overlay;
+  background-image: var(--grain-src);
+  background-size: 180px 180px;
+}
+
+/* ------------------------------------------------------------- the artwork */
+
+#episodes .card__thumb-art {
+  position: absolute;
+  /* Bleed so the hover drift can never expose an edge. */
+  inset: -8%;
+  z-index: 1;
+  display: block;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+/* Inner layer: a warm bloom that sits over the art and does the drifting. */
+#episodes .card__thumb-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  mix-blend-mode: soft-light;
+  opacity: 0.55;
+  background: radial-gradient(
+    52% 58% at 28% 30%,
+    color-mix(in oklab, var(--ember-hot) 62%, transparent) 0%,
+    transparent 70%
+  );
+}
+
+/* --- 1 · a lit city through rain on glass -------------------------------- */
+/* Key light upper-left, seen through a wet pane; hard-edged tower right. */
+
+#episodes [data-episode]:nth-of-type(1) .card__thumb-art {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 360' preserveAspectRatio='xMidYMid slice'%3E%3Cdefs%3E%3ClinearGradient id='a-sky' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%231c120d'/%3E%3Cstop offset='.46' stop-color='%23140d09'/%3E%3Cstop offset='1' stop-color='%230e0906'/%3E%3C/linearGradient%3E%3CradialGradient id='a-win' cx='.5' cy='.5' r='.5'%3E%3Cstop offset='0' stop-color='%23ef6b34' stop-opacity='.52'/%3E%3Cstop offset='.3' stop-color='%23d4562a' stop-opacity='.26'/%3E%3Cstop offset='.64' stop-color='%238f3517' stop-opacity='.09'/%3E%3Cstop offset='1' stop-color='%238f3517' stop-opacity='0'/%3E%3C/radialGradient%3E%3CradialGradient id='a-road' cx='.5' cy='.5' r='.5'%3E%3Cstop offset='0' stop-color='%23d4562a' stop-opacity='.2'/%3E%3Cstop offset='.42' stop-color='%238f3517' stop-opacity='.08'/%3E%3Cstop offset='1' stop-color='%238f3517' stop-opacity='0'/%3E%3C/radialGradient%3E%3Cfilter id='a-f20' x='-40%25' y='-40%25' width='180%25' height='180%25'%3E%3CfeGaussianBlur stdDeviation='20'/%3E%3C/filter%3E%3Cfilter id='a-f9' x='-60%25' y='-60%25' width='220%25' height='220%25'%3E%3CfeGaussianBlur stdDeviation='9'/%3E%3C/filter%3E%3Cfilter id='a-f4' x='-60%25' y='-60%25' width='220%25' height='220%25'%3E%3CfeGaussianBlur stdDeviation='4'/%3E%3C/filter%3E%3Cfilter id='a-f2' x='-60%25' y='-60%25' width='220%25' height='220%25'%3E%3CfeGaussianBlur stdDeviation='2'/%3E%3C/filter%3E%3C/defs%3E%3Crect width='640' height='360' fill='url(%23a-sky)'/%3E%3Cellipse cx='148' cy='100' rx='216' ry='138' fill='url(%23a-win)'/%3E%3Cellipse cx='132' cy='92' rx='118' ry='80' fill='url(%23a-win)' opacity='.7'/%3E%3Cg filter='url(%23a-f4)'%3E%3Cellipse cx='104' cy='74' rx='7' ry='8' fill='%23ef6b34' opacity='.62'/%3E%3Cellipse cx='146' cy='82' rx='6' ry='7' fill='%23f4ece1' opacity='.32'/%3E%3Cellipse cx='192' cy='66' rx='7' ry='8' fill='%23ef6b34' opacity='.5'/%3E%3Cellipse cx='98' cy='112' rx='6' ry='7' fill='%23ef6b34' opacity='.38'/%3E%3Cellipse cx='176' cy='106' rx='6' ry='7' fill='%23ef6b34' opacity='.42'/%3E%3Cellipse cx='222' cy='88' rx='5' ry='6' fill='%23f4ece1' opacity='.26'/%3E%3Cellipse cx='140' cy='126' rx='5' ry='6' fill='%238f3517' opacity='.5'/%3E%3Cellipse cx='212' cy='122' rx='5' ry='6' fill='%238f3517' opacity='.44'/%3E%3C/g%3E%3Cg filter='url(%23a-f2)'%3E%3Cellipse cx='366' cy='140' rx='5' ry='6' fill='%23ef6b34' opacity='.36'/%3E%3Cellipse cx='396' cy='158' rx='4' ry='5' fill='%23f4ece1' opacity='.16'/%3E%3Cellipse cx='430' cy='138' rx='5' ry='6' fill='%23ef6b34' opacity='.24'/%3E%3Cellipse cx='382' cy='180' rx='4' ry='5' fill='%238f3517' opacity='.42'/%3E%3C/g%3E%3Crect y='198' width='470' height='162' fill='url(%23a-road)'/%3E%3Cellipse cx='164' cy='238' rx='230' ry='80' fill='url(%23a-road)' filter='url(%23a-f20)'/%3E%3Cg filter='url(%23a-f9)'%3E%3Cellipse cx='168' cy='220' rx='52' ry='4' fill='%23d4562a' opacity='.34'/%3E%3Cellipse cx='186' cy='250' rx='38' ry='3' fill='%23ef6b34' opacity='.2'/%3E%3Cellipse cx='204' cy='278' rx='24' ry='2.5' fill='%23d4562a' opacity='.14'/%3E%3C/g%3E%3Cpath d='M470 360 L470 84 L560 84 L560 360 Z' fill='%230b0705'/%3E%3Cpath d='M514 84 L514 0 L640 0 L640 360 L560 360 L560 84 Z' fill='%23080503'/%3E%3Crect x='588' y='0' width='3.5' height='200' fill='%230b0705'/%3E%3Cg stroke='%23f4ece1' fill='none' stroke-linecap='round'%3E%3Cpath d='M52 -14 L66 148' stroke-opacity='.13' stroke-width='1.9'/%3E%3Cpath d='M208 -14 L224 170' stroke-opacity='.08' stroke-width='1.3'/%3E%3Cpath d='M348 -14 L362 136' stroke-opacity='.1' stroke-width='1.6'/%3E%3Cpath d='M498 -14 L514 174' stroke-opacity='.06' stroke-width='1.2'/%3E%3C/g%3E%3Cg stroke='%23f4ece1' fill='none' stroke-linecap='round' filter='url(%23a-f2)' opacity='.5'%3E%3Cpath d='M124 -14 L142 162' stroke-opacity='.09' stroke-width='2.2'/%3E%3Cpath d='M278 -14 L294 148' stroke-opacity='.07' stroke-width='2'/%3E%3Cpath d='M436 -14 L452 166' stroke-opacity='.06' stroke-width='2.1'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* --- 2 · a headlight smear, long exposure -------------------------------- */
+/* A wet road at night; one car already gone, only the light left on it. */
+
+#episodes [data-episode]:nth-of-type(2) .card__thumb-art {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 360' preserveAspectRatio='xMidYMid slice'%3E%3Cdefs%3E%3ClinearGradient id='b-sky' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%230c0705'/%3E%3Cstop offset='.42' stop-color='%23120b07'/%3E%3Cstop offset='.64' stop-color='%231a110d'/%3E%3Cstop offset='1' stop-color='%23090503'/%3E%3C/linearGradient%3E%3ClinearGradient id='b-sodium' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%238f3517' stop-opacity='0'/%3E%3Cstop offset='.82' stop-color='%23d4562a' stop-opacity='.07'/%3E%3Cstop offset='1' stop-color='%238f3517' stop-opacity='.02'/%3E%3C/linearGradient%3E%3CradialGradient id='b-smear' cx='.5' cy='.5' r='.5'%3E%3Cstop offset='0' stop-color='%23f4ece1' stop-opacity='.52'/%3E%3Cstop offset='.16' stop-color='%23ef6b34' stop-opacity='.46'/%3E%3Cstop offset='.5' stop-color='%23d4562a' stop-opacity='.19'/%3E%3Cstop offset='1' stop-color='%238f3517' stop-opacity='0'/%3E%3C/radialGradient%3E%3ClinearGradient id='b-sheen' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23d4562a' stop-opacity='.15'/%3E%3Cstop offset='1' stop-color='%238f3517' stop-opacity='0'/%3E%3C/linearGradient%3E%3Cfilter id='b-f20' x='-40%25' y='-60%25' width='180%25' height='220%25'%3E%3CfeGaussianBlur stdDeviation='20'/%3E%3C/filter%3E%3Cfilter id='b-f12' x='-60%25' y='-60%25' width='220%25' height='220%25'%3E%3CfeGaussianBlur stdDeviation='12'/%3E%3C/filter%3E%3Cfilter id='b-f9' x='-60%25' y='-60%25' width='220%25' height='220%25'%3E%3CfeGaussianBlur stdDeviation='9'/%3E%3C/filter%3E%3Cfilter id='b-f5' x='-60%25' y='-60%25' width='220%25' height='220%25'%3E%3CfeGaussianBlur stdDeviation='5'/%3E%3C/filter%3E%3Cfilter id='b-f3' x='-60%25' y='-60%25' width='220%25' height='220%25'%3E%3CfeGaussianBlur stdDeviation='3'/%3E%3C/filter%3E%3Cfilter id='b-f1' x='-60%25' y='-60%25' width='220%25' height='220%25'%3E%3CfeGaussianBlur stdDeviation='1.2'/%3E%3C/filter%3E%3C/defs%3E%3Crect width='640' height='360' fill='url(%23b-sky)'/%3E%3Crect y='118' width='640' height='150' fill='url(%23b-sodium)'/%3E%3Cpath d='M296 220 L296 152 L344 152 L344 118 L438 118 L438 138 L534 138 L534 106 L640 106 L640 220 Z' fill='%23120c08' opacity='.92' filter='url(%23b-f6)'/%3E%3Cg filter='url(%23b-f5)'%3E%3Cellipse cx='330' cy='138' rx='6' ry='7' fill='%23ef6b34' opacity='.44'/%3E%3Cellipse cx='360' cy='138' rx='6' ry='7' fill='%23ef6b34' opacity='.34'/%3E%3Cellipse cx='330' cy='166' rx='6' ry='7' fill='%23ef6b34' opacity='.32'/%3E%3Cellipse cx='390' cy='166' rx='6' ry='7' fill='%23f4ece1' opacity='.22'/%3E%3Cellipse cx='420' cy='138' rx='6' ry='7' fill='%23ef6b34' opacity='.4'/%3E%3Cellipse cx='360' cy='194' rx='6' ry='7' fill='%23ef6b34' opacity='.3'/%3E%3Cellipse cx='480' cy='166' rx='6' ry='7' fill='%23ef6b34' opacity='.32'/%3E%3Cellipse cx='540' cy='138' rx='6' ry='7' fill='%23ef6b34' opacity='.36'/%3E%3Cellipse cx='570' cy='166' rx='6' ry='7' fill='%23ef6b34' opacity='.2'/%3E%3Cellipse cx='510' cy='194' rx='6' ry='7' fill='%23ef6b34' opacity='.18'/%3E%3Cellipse cx='600' cy='138' rx='6' ry='7' fill='%23f4ece1' opacity='.18'/%3E%3C/g%3E%3Cg filter='url(%23b-f5)' opacity='.85'%3E%3Cellipse cx='88' cy='176' rx='4.4' ry='4.4' fill='%23f4ece1' opacity='.42'/%3E%3Cellipse cx='146' cy='196' rx='3.4' ry='3.4' fill='%23ef6b34' opacity='.32'/%3E%3Cellipse cx='232' cy='188' rx='3' ry='3' fill='%23a2937f' opacity='.24'/%3E%3C/g%3E%3Crect x='84.5' y='180' width='3.5' height='72' fill='%230b0604'/%3E%3Crect y='212' width='640' height='4' fill='%23090503' opacity='.9' filter='url(%23b-f1)'/%3E%3Crect y='216' width='640' height='144' fill='%23110a06'/%3E%3Crect y='216' width='640' height='92' fill='url(%23b-sheen)'/%3E%3Cellipse cx='298' cy='243' rx='286' ry='26' fill='url(%23b-smear)' filter='url(%23b-f20)'/%3E%3Cellipse cx='290' cy='242' rx='198' ry='17' fill='url(%23b-smear)' filter='url(%23b-f12)'/%3E%3Cellipse cx='282' cy='241' rx='126' ry='10' fill='url(%23b-smear)' filter='url(%23b-f5)'/%3E%3Cellipse cx='272' cy='240' rx='72' ry='6' fill='url(%23b-smear)' filter='url(%23b-f3)'/%3E%3Cellipse cx='226' cy='240' rx='42' ry='2.8' fill='%23f4ece1' opacity='.74' filter='url(%23b-f3)'/%3E%3Cellipse cx='366' cy='241' rx='30' ry='2.2' fill='%23ef6b34' opacity='.6' filter='url(%23b-f3)'/%3E%3Cg filter='url(%23b-f9)'%3E%3Cellipse cx='288' cy='258' rx='102' ry='5' fill='%23d4562a' opacity='.2'/%3E%3Cellipse cx='300' cy='284' rx='70' ry='4' fill='%23ef6b34' opacity='.11'/%3E%3C/g%3E%3Cg fill='none' stroke='%23ef6b34' stroke-linecap='round' filter='url(%23b-f1)'%3E%3Cpath d='M48 234 H572' stroke-opacity='.08' stroke-width='1.5'/%3E%3Cpath d='M8 250 H612' stroke-opacity='.05' stroke-width='1.1'/%3E%3C/g%3E%3Cg stroke='%23f4ece1' fill='none' stroke-linecap='round'%3E%3Cpath d='M64 -14 L80 126' stroke-opacity='.1' stroke-width='1.7'/%3E%3Cpath d='M232 -14 L246 156' stroke-opacity='.06' stroke-width='1.2'/%3E%3Cpath d='M398 -14 L412 118' stroke-opacity='.08' stroke-width='1.4'/%3E%3Cpath d='M560 -14 L574 142' stroke-opacity='.05' stroke-width='1.1'/%3E%3C/g%3E%3Cg stroke='%23f4ece1' fill='none' stroke-linecap='round' filter='url(%23b-f3)' opacity='.5'%3E%3Cpath d='M152 -14 L168 134' stroke-opacity='.07' stroke-width='2'/%3E%3Cpath d='M316 -14 L332 124' stroke-opacity='.055' stroke-width='1.8'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* --- 3 · a window's worth of light raked across a room ------------------- */
+/* The window is off frame-left; its beam lands on the wall and the floor. */
+
+#episodes [data-episode]:nth-of-type(3) .card__thumb-art {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 360' preserveAspectRatio='xMidYMid slice'%3E%3Cdefs%3E%3ClinearGradient id='c-room' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23291810'/%3E%3Cstop offset='.46' stop-color='%23180f0a'/%3E%3Cstop offset='1' stop-color='%230e0805'/%3E%3C/linearGradient%3E%3ClinearGradient id='c-beam' x1='0' y1='0' x2='1' y2='.4'%3E%3Cstop offset='0' stop-color='%23ef6b34' stop-opacity='.34'/%3E%3Cstop offset='.4' stop-color='%23d4562a' stop-opacity='.18'/%3E%3Cstop offset='1' stop-color='%238f3517' stop-opacity='0'/%3E%3C/linearGradient%3E%3ClinearGradient id='c-pool' x1='0' y1='0' x2='1' y2='.2'%3E%3Cstop offset='0' stop-color='%23d4562a' stop-opacity='.26'/%3E%3Cstop offset='.46' stop-color='%238f3517' stop-opacity='.12'/%3E%3Cstop offset='1' stop-color='%238f3517' stop-opacity='0'/%3E%3C/linearGradient%3E%3CradialGradient id='c-amb' cx='.5' cy='.5' r='.5'%3E%3Cstop offset='0' stop-color='%23d4562a' stop-opacity='.2'/%3E%3Cstop offset='1' stop-color='%238f3517' stop-opacity='0'/%3E%3C/radialGradient%3E%3Cfilter id='c-f18' x='-40%25' y='-40%25' width='180%25' height='180%25'%3E%3CfeGaussianBlur stdDeviation='18'/%3E%3C/filter%3E%3Cfilter id='c-f9' x='-40%25' y='-40%25' width='180%25' height='180%25'%3E%3CfeGaussianBlur stdDeviation='9'/%3E%3C/filter%3E%3Cfilter id='c-f5' x='-40%25' y='-40%25' width='180%25' height='180%25'%3E%3CfeGaussianBlur stdDeviation='5'/%3E%3C/filter%3E%3Cfilter id='c-f2' x='-40%25' y='-40%25' width='180%25' height='180%25'%3E%3CfeGaussianBlur stdDeviation='2'/%3E%3C/filter%3E%3Cfilter id='c-f1' x='-40%25' y='-40%25' width='180%25' height='180%25'%3E%3CfeGaussianBlur stdDeviation='1'/%3E%3C/filter%3E%3C/defs%3E%3Crect width='640' height='360' fill='url(%23c-room)'/%3E%3Cellipse cx='24' cy='104' rx='212' ry='164' fill='url(%23c-amb)'/%3E%3Crect y='250' width='640' height='110' fill='%23130c08'/%3E%3Crect y='250' width='640' height='2.6' fill='%230a0503' opacity='.8' filter='url(%23c-f1)'/%3E%3Cpath d='M-40 -30 L206 -30 L468 252 L142 252 Z' fill='url(%23c-beam)' filter='url(%23c-f9)'/%3E%3Cpath d='M-40 -30 L206 -30 L250 12 L-6 12 Z' fill='%23ef6b34' opacity='.22' filter='url(%23c-f9)'/%3E%3Cpath d='M142 252 L468 252 L562 372 L74 372 Z' fill='url(%23c-pool)' filter='url(%23c-f9)'/%3E%3Cg fill='%230f0906'%3E%3Cpath d='M46 -30 L74 -30 L256 252 L226 252 Z' opacity='.4' filter='url(%23c-f5)'/%3E%3Cpath d='M-40 104 L168 104 L224 140 L-40 140 Z' opacity='.3' filter='url(%23c-f5)'/%3E%3Cpath d='M170 252 L470 252 L486 268 L158 268 Z' opacity='.26' filter='url(%23c-f5)'/%3E%3C/g%3E%3Cg fill='%23f4ece1'%3E%3Ccircle cx='122' cy='66' r='1.4' opacity='.26'/%3E%3Ccircle cx='180' cy='112' r='1.1' opacity='.18'/%3E%3Ccircle cx='96' cy='152' r='1.3' opacity='.22'/%3E%3Ccircle cx='234' cy='148' r='1' opacity='.16'/%3E%3Ccircle cx='162' cy='198' r='1.5' opacity='.2'/%3E%3Ccircle cx='272' cy='208' r='1.1' opacity='.14'/%3E%3Ccircle cx='202' cy='238' r='1.2' opacity='.16'/%3E%3Ccircle cx='336' cy='244' r='1' opacity='.12'/%3E%3Ccircle cx='62' cy='30' r='1' opacity='.22'/%3E%3Ccircle cx='288' cy='98' r='1.1' opacity='.14'/%3E%3Ccircle cx='130' cy='238' r='1' opacity='.12'/%3E%3Ccircle cx='250' cy='182' r='1' opacity='.13'/%3E%3C/g%3E%3Cg filter='url(%23c-f1)' opacity='.55' fill='%23f4ece1'%3E%3Ccircle cx='146' cy='132' r='1.1' opacity='.18'/%3E%3Ccircle cx='212' cy='60' r='1' opacity='.14'/%3E%3Ccircle cx='258' cy='228' r='1.1' opacity='.12'/%3E%3Ccircle cx='88' cy='94' r='1' opacity='.16'/%3E%3Ccircle cx='304' cy='168' r='1' opacity='.1'/%3E%3Ccircle cx='118' cy='212' r='1.1' opacity='.12'/%3E%3C/g%3E%3Cg fill='none' stroke='%23f4ece1' stroke-linecap='round' filter='url(%23c-f1)'%3E%3Cpath d='M156 -10 L330 372' stroke-opacity='.05' stroke-width='1.5'/%3E%3Cpath d='M302 -10 L472 372' stroke-opacity='.04' stroke-width='1.2'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ------------------------------------------------------------- play glyph */
+
+#episodes .card__play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  translate: -50% -50%;
+  border-radius: 50%;
+  font-size: 2.75rem;
+  color: color-mix(in oklab, var(--paper) 88%, transparent);
+  background: color-mix(in oklab, var(--roast-950) 44%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--paper) 24%, transparent);
+  opacity: 0.82;
+  transition:
+    opacity var(--dur-mid) var(--ease-out),
+    box-shadow var(--dur-mid) var(--ease-out),
+    scale var(--dur-mid) var(--ease-out);
+}
+
+#episodes .card__play::after {
+  content: "";
+  width: 0.4em;
+  height: 0.48em;
+  margin-left: 0.1em;
+  background: currentColor;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+/* Touch has no hover to answer, so it gets a quieter glyph, not a louder one. */
+@media (hover: none), (pointer: coarse) {
+  #episodes .card__play {
+    opacity: 0.58;
+  }
+}
+
+/* ------------------------------------------------------------------- body */
+
+#episodes .card__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 1.15rem 1.35rem 1.3rem;
+}
+
+/* The title is the content. Nothing else in the card competes with it. */
+#episodes .card__title {
+  display: block;
+  font-size: var(--step-1);
+  font-weight: 500;
+  line-height: 1.17;
+  letter-spacing: -0.015em;
+  color: var(--paper);
+  text-wrap: balance;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+@media (min-width: 56rem) {
+  #episodes .cards > .card:first-child .card__title {
+    font-size: var(--step-2);
+    line-height: 1.13;
+    letter-spacing: -0.02em;
+    /* No max-width here on purpose. Measured at every width, the column is
+       always narrower than 19ch would be (392.7px box vs a 426.4px cap at 1440;
+       397.6 vs 406.1 at 1280; 364.9 vs 389.9 at 1152), so the cap never did
+       anything — `text-wrap: balance` was operating on the column width, which
+       is the behaviour we actually want. A cap that never binds is a fiction
+       that misleads whoever tunes this next. */
+  }
+}
+
+#episodes .card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-top: auto;
+  padding-top: 1rem;
+  font-size: var(--step--1);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.13em;
+  color: var(--paper-mute);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+#episodes .card__meta::before {
+  content: "";
+  flex: none;
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 50%;
+  background: var(--ember);
+  opacity: 0.9;
+  transition:
+    opacity var(--dur-mid) var(--ease-out),
+    box-shadow var(--dur-mid) var(--ease-out);
+}
+
+/* ----------------------------------------------------- hover / focus-within */
+
+@media (hover: hover) and (pointer: fine) {
+  #episodes .card:hover {
+    border-color: var(--card-line-hi);
+    box-shadow: var(--card-shadow-hi);
+  }
+
+  #episodes .card:hover .card__title {
+    color: color-mix(in oklab, var(--paper) 86%, var(--ember-hot));
+  }
+
+  #episodes .card:hover .card__meta {
+    color: color-mix(in oklab, var(--paper-mute) 74%, var(--paper));
+  }
+
+  #episodes .card:hover .card__meta::before {
+    opacity: 1;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ember) 16%, transparent);
+  }
+
+  #episodes .card:hover .card__play {
+    opacity: 1;
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--paper) 38%, transparent);
+  }
+}
+
+#episodes .card:has(.card__link:focus-visible) {
+  border-color: var(--card-line-hi);
+  box-shadow: var(--card-shadow-hi);
+}
+
+#episodes .card:has(.card__link:focus-visible) .card__meta::before {
+  opacity: 1;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ember) 16%, transparent);
+}
+
+/* A 2px lift and a slow breath in the frame. Nothing scales up, nothing glows. */
+@media (prefers-reduced-motion: no-preference) {
+  #episodes .card {
+    transform: translateY(0);
+    transition:
+      transform var(--dur-mid) var(--ease-out),
+      border-color var(--dur-mid) var(--ease-out),
+      box-shadow var(--dur-mid) var(--ease-out);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    #episodes .card:hover {
+      transform: translateY(-3px);
+    }
+  }
+
+  #episodes .card:has(.card__link:focus-visible) {
+    transform: translateY(-3px);
+  }
+
+  #episodes .card:hover .card__play,
+  #episodes .card:has(.card__link:focus-visible) .card__play {
+    scale: 1.08;
+  }
+
+  /* The frame drifts — the art layer scales a hair, the bloom slides across.
+     820ms for everything. These were 1500/1300/1700ms — roughly 2x the page's
+     --dur-mid at 420ms — and produced two visible symptoms: the card read as stuck rather
+     than breathing, and the bloom finished ~1.3s AFTER the border/lift had
+     already answered, so the card's two halves visibly separated. */
+  #episodes .card:hover .card__thumb-art,
+  #episodes .card:has(.card__link:focus-visible) .card__thumb-art {
+    transform: scale(1.03);
+    transition: transform 820ms var(--ease-out);
+  }
+
+  #episodes .card:hover .card__thumb-art::after,
+  #episodes .card:has(.card__link:focus-visible) .card__thumb-art::after {
+    opacity: 0.8;
+    transform: translate(1.6%, -2.4%);
+    transition:
+      opacity 820ms var(--ease-out),
+      transform 820ms var(--ease-out);
+  }
+
+  #episodes .card:hover .card__thumb::before,
+  #episodes .card:has(.card__link:focus-visible) .card__thumb::before {
+    opacity: 0.86;
+    transition: opacity 1300ms var(--ease-out);
+  }
+
+  /* Lite devices keep the lift and the warm border; the drifting is dropped. */
+  :root[data-perf="lite"] #episodes .card:hover .card__thumb-art,
+  :root[data-perf="lite"] #episodes .card:has(.card__link:focus-visible) .card__thumb-art,
+  :root[data-perf="lite"] #episodes .card:hover .card__thumb-art::after,
+  :root[data-perf="lite"] #episodes .card:has(.card__link:focus-visible) .card__thumb-art::after {
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------ entrance (JS) */
+/* The armed state is only ever added by js/episodes.js, so if that module
+   fails to load the cards are simply visible. Nothing is hidden by default. */
+
+@media (prefers-reduced-motion: no-preference) {
+  .cards[data-episodes].episodes--armed > .card[data-episode] {
+    opacity: 0;
+    translate: 0 1.05rem;
+  }
+
+  /* `opacity: 0` keeps the card link in the tab order and in the a11y tree, so
+     a keyboard user would land on it, hear the episode title announced, and
+     see no focus indicator anywhere. Anything focused reveals at once. */
+  .cards[data-episodes].episodes--armed > .card[data-episode]:focus-within,
+  .cards[data-episodes].episodes--armed > .card[data-episode]:focus-visible {
+    opacity: 1;
+    translate: 0 0;
+  }
+
+  .cards[data-episodes].episodes--armed > .card[data-episode].is-in {
+    opacity: 1;
+    translate: 0 0;
+    transition:
+      opacity 950ms var(--ease-out) var(--in-delay, 0ms),
+      translate 950ms var(--ease-out) var(--in-delay, 0ms);
+  }
+}
+
+/* The 90ms stagger, declared here rather than as an inline `transition-delay`.
+   An inline delay applies to EVERY transition on the element, so each card's
+   hover response was also delayed by up to 180ms — measured, card 1 responding
+   while cards 2 and 3 showed nothing 60ms after pointer entry. Scoping the
+   delay to the entrance rule only means the hover answers instantly again. */
+.cards[data-episodes] > .card[data-episode]:nth-child(1) { --in-delay: 0ms; }
+.cards[data-episodes] > .card[data-episode]:nth-child(2) { --in-delay: 90ms; }
+.cards[data-episodes] > .card[data-episode]:nth-child(3) { --in-delay: 180ms; }
+
+/* ------------------------------------------------------------------ extras */
+
+@media (hover: none), (pointer: coarse) {
+  /* No hover to lean on, so the link reads as live on its own. */
+  #episodes .card__meta::before {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ember) 14%, transparent);
+  }
+}
+
+@media (prefers-contrast: more) {
+  #episodes .card {
+    --card-line: color-mix(in oklab, var(--paper) 24%, transparent);
+    --card-line-hi: color-mix(in oklab, var(--paper) 42%, transparent);
+  }
+
+  #episodes .card__meta {
+    color: var(--paper-dim);
+  }
+}

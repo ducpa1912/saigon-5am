@@ -1,0 +1,19 @@
+{
+  "name": "saigon-5am",
+  "version": "1.0.0",
+  "description": "One-page site for the Saigon, 5am YouTube channel.",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "python3 -m http.server 8099",
+    "check": "sh tools/syntax.sh && node tools/build-css.mjs --check",
+    "setup": "npm install && npx playwright install chromium",
+    "poster": "node tools/poster.mjs",
+    "shot": "node tools/shot.mjs",
+    "lh": "node tools/lh.mjs --form=both"
+  },
+  "devDependencies": {
+    "lighthouse": "^12.3.0",
+    "playwright": "^1.49.1"
+  }
+}

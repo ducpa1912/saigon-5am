@@ -1,0 +1,554 @@
+/* ==========================================================================
+   SECTIONS — the page's typographic system and its vertical rhythm.
+   Owned by the TYPOGRAPHY / LAYOUT track.
+
+   Display: Archivo Black (--font-display).  Text: Inter (--font-body).
+   Every size comes from the fluid scale in tokens.css. Nothing here invents
+   a colour or a pixel value that a token already owns.
+
+   Two ideas hold the page together:
+     1. ONE ALIGNMENT SPINE. Every heading, numeral and paragraph starts on
+        the same left edge, at every breakpoint. No indents, no centring,
+        no decorative exceptions. Sections 1–5 and 7–9 are the layout track's;
+        section 6 (#ideas) was appended by the booking/blocks track directly
+        into this file, and is built on this same spine and this same 45ch
+        measure so the two agree by construction rather than by luck.
+     2. ONE MEASURE. Running copy sits at 45ch (~51 real characters, mid-band).
+        Section heads cap at 16–20ch and are balanced, so the rag on a display
+        line is always deliberate.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. The shell — max-width + fluid gutters
+   -------------------------------------------------------------------------- */
+.shell {
+  width: 100%;
+  max-width: var(--shell-max);
+  margin-inline: auto;
+  padding-inline: var(--shell-pad);
+}
+
+/* --------------------------------------------------------------------------
+   2. Section rhythm — one gap, used everywhere
+   -------------------------------------------------------------------------- */
+.section {
+  position: relative;
+  /* Every section contributes its own leading space and no trailing space, so
+     the measured distance between two blocks of content is always exactly
+     one --section-gap. That is what makes the page feel paced rather than
+     merely spaced. */
+  padding-block: var(--section-gap) 0;
+}
+
+/* The last section pays for the pause before the footer. */
+main > .section:last-of-type {
+  padding-block-end: calc(var(--section-gap) * 0.66);
+}
+
+/* Fixed masthead must never eat a jumped-to heading. */
+.section,
+.hero,
+#footer {
+  scroll-margin-block-start: clamp(4.5rem, 9vw, 7.5rem);
+}
+
+/* Anything the browser can scroll into view on its own — cards, footer links,
+   the CTA. The clamp above floors at 72px, but the masthead band is 89px at
+   1440 and 101px at 390, so a reverse-tabbed card still landed *under* the bar
+   with its focus ring drawn behind the scrim. 7rem clears both. */
+.card,
+.card__link,
+.footer__link,
+.talk__cta,
+.hero__actions {
+  scroll-margin-block-start: 7rem;
+}
+
+/* --------------------------------------------------------------------------
+   3. Section head — Archivo Black, one step below the hero
+   -------------------------------------------------------------------------- */
+.section__title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--step-3);
+  line-height: var(--leading-tight);
+  /* Optical tracking: the bigger the setting, the tighter it wants to be.
+     --tracking-display (-0.022em) is the base; we push a little further at
+     display sizes and pull back toward zero on narrow screens so 28px caps
+     do not close up. */
+  letter-spacing: -0.026em;
+  color: var(--text);
+  text-wrap: balance;
+  /* 17ch here, overridden to 16ch at >=64rem below. Measured: at 1440 every
+     heading box is 505.4px = 16ch, so the >=64rem value is what is actually
+     binding at desktop widths — "Latest episodes" (391px) fits either way.
+     Both caps exist to force a 2–3 line rag on the long heads. */
+  max-width: 17ch;
+  /* The step from display to text is the single most important distance on
+     the page after the section gap. Generous, never tight. */
+  margin-block: 0 clamp(1.6rem, 1rem + 2.5vw, 2.9rem);
+}
+
+@media (min-width: 64rem) {
+  .section__title {
+    letter-spacing: -0.03em;
+    max-width: 16ch;
+  }
+}
+
+@media (max-width: 30rem) {
+  .section__title {
+    letter-spacing: -0.012em;
+    max-width: 20ch;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   4. Chapter marker — the 01–04 slate numeral
+   --------------------------------------------------------------------------
+   Restrained on purpose: a tabular numeral in burnt orange, then a hairline
+   leader that dissolves to the right. No pill, no background, no border box —
+   it should read like a slate clapper or a table-of-contents leader, not a
+   blog eyebrow. The leader does the work of tying the numeral to the section
+   it belongs to, and it is the only rule grammar on the page: section 6 below
+   reuses the exact same gradient to divide the two ideas from each other.
+   -------------------------------------------------------------------------- */
+.section__index {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.5rem, 0.3rem + 0.9vw, 0.95rem);
+  margin: 0 0 clamp(1.35rem, 0.8rem + 2.1vw, 2.35rem);
+
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  line-height: 1;
+  /* Tracking to make two tabular digits read as a slate marker rather than a
+     list item. The optical pull-back lives on the rule below, not here — a
+     negative margin on the flex container would make the block 3px wider than
+     the shell. */
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* `--ember` measures 4.60:1 on the page ground — inside AA, but with almost no
+   margin — and only 3.71:1 on #talk's lifted warm plate, where it fails. There
+   is no darker warm ground that rescues it without changing the token, and
+   changing `--ember` would break the primary CTA's own label. So the numeral
+   lifts to `--ember-hot` (6.08:1) only where the plate demands it. */
+#talk .section__index {
+  color: var(--ember-hot);
+}
+
+.section__index::after {
+  content: "";
+  flex: 1 1 0;
+  height: 1px;
+  /* Absorb the trailing side-bearing a letter-spaced glyph carries, so the
+     rule starts optically flush with the last digit. */
+  margin-inline-start: -0.28em;
+  background-image: linear-gradient(
+    90deg,
+    var(--line) 0%,
+    var(--line) 46%,
+    var(--line-soft) 72%,
+    transparent 98%
+  );
+}
+
+/* --------------------------------------------------------------------------
+   5. Prose — Inter, one measure for the whole page
+   -------------------------------------------------------------------------- */
+.prose {
+  font-family: var(--font-body);
+  font-size: var(--step-1);
+  line-height: 1.6;
+  letter-spacing: -0.004em;
+  color: var(--text-dim);
+  /* 45ch of Inter measures out at ~51 real characters, which sits in the
+     middle of the 45–75 band. Tuned against the copy, not guessed: at 45ch
+     neither paragraph splits the hyphenated compound "one-on-one" across a
+     line, and no line ends on a single word. 46–51ch all break it. */
+  max-width: 45ch;
+  text-wrap: pretty;
+  margin: 0;
+}
+
+/* Below 375px the shell only yields ~26 characters at --step-1, which is
+   narrower than a paperback. One step down opens it back to ~30 without
+   touching the 390/414px setting, where --step-1 still measures a healthy
+   ~35 characters. */
+@media (max-width: 23.4375rem) {
+  .prose {
+    font-size: var(--step-0);
+    line-height: 1.62;
+    max-width: 42ch;
+  }
+}
+
+/* Section body blocks (cards, ideas lists, the booking CTA) always get air
+   between themselves and the prose above, whoever owns their type. */
+.prose + .talk__cta,
+.prose + :where(.cards, .ideas, .idea) {
+  margin-block-start: clamp(2.25rem, 1.4rem + 3.2vw, 3.75rem);
+}
+
+/* --------------------------------------------------------------------------
+   6. Two named ideas — #ideas
+   --------------------------------------------------------------------------
+   The entire job of this section is to make TWO NAMES memorable. Everything
+   below serves that and nothing else:
+
+     · The TERM is display type at --step-2 — exactly one step below the
+       section head (--step-3), so the hierarchy stays honest: the head owns
+       the section, the term owns the idea, and neither shouts over the other.
+     · The TERM and the BODY never share a rhythm. Term at --leading-tight,
+       body at --step-1 / 1.6 on the SAME 45ch measure as .prose, so this
+       section cannot contradict the typography two sections above it.
+     · "A" and "B" hang out in the gutter as marginal letters, cap line
+       aligned with the term they label. Neither the term nor the body moves
+       a pixel when that happens: the spine is the spine. Where the gutter is
+       too narrow to hang in (below 67.5rem — see the arithmetic on .idea__num)
+       the marker takes its own line above the term instead, where it reads as
+       the same slate marker a section head uses, one level down.
+     · The two ideas are divided by the SAME fading leader that divides each
+       section's numeral from its title — one rule grammar for the whole page:
+       a hairline that starts hard on the spine and dissolves to the right.
+       No box, no card, no tint. Two named things, set as type.
+
+   markup:  dl.ideas > div.idea > (dt.idea__term > span.idea__num) + dd.idea__body
+   -------------------------------------------------------------------------- */
+.ideas {
+  /* 2.75rem → 4.25rem. The pause between two ideas, used twice per division
+     (once above the leader, once below) so the rule sits dead centre in it. */
+  --idea-sep: clamp(2.75rem, 1.5rem + 4vw, 4.25rem);
+  margin: 0;
+}
+
+.idea__term {
+  /* The TERM — not .idea — is the marker's containing block. It has to be: the
+     second .idea begins with its leader rule, so a marker offset from .idea
+     would cap-align to the RULE instead of to the word it labels. */
+  position: relative;
+
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--step-2);
+  line-height: 1.1;
+  letter-spacing: -0.022em;
+  color: var(--text);
+  text-wrap: balance;
+}
+
+.idea__num {
+  position: absolute;
+  /* -2.1rem = -33.6px against an "A" that is ~9.8px wide at --step--1, which
+     leaves ~24px of clear air between the letter and the word: read as
+     marginalia, never as a jammed-up typo. */
+  inset-inline-start: -2.1rem;
+  /* Cap-line alignment, from the fonts' own metrics rather than by eye.
+     Archivo Black: ascent .88, descent .21, cap .688 — at --leading-tight
+     (1.1) its cap line is 0.197em below the top of its line box. Inter:
+     ascent .97, descent .24, cap .7275 — at line-height 1 the marker's cap
+     line is 0.1375em below its own. The difference, 0.14em of the TERM, is
+     what puts the two cap lines level; expressed in the term's own fluid size
+     it stays level at every breakpoint for free. */
+  top: calc(var(--step-2) * 0.14);
+
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: var(--step--1);
+  line-height: 1;
+  /* Same tracking as .section__index, for the same reason: a lone letter has
+     to open out into a marker or it reads as debris. */
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.idea__body {
+  /* One measure for the whole page. 45ch at --step-1 is ~51 real characters —
+     identical to .prose two sections above, so both read as one voice. */
+  max-width: 45ch;
+  margin: clamp(1rem, 0.6rem + 1.2vw, 1.6rem) 0 0;
+  font-family: var(--font-body);
+  font-size: var(--step-1);
+  line-height: 1.6;
+  letter-spacing: -0.004em;
+  color: var(--text-dim);
+  text-wrap: pretty;
+}
+
+/* Exactly the step-down .prose takes below 375px, and for exactly the same
+   reason: the shell only yields ~26 characters at --step-1 there, which is
+   narrower than a paperback. One step down opens it back to ~30 — and it keeps
+   the page's two blocks of running copy behaving identically at the narrowest
+   end of the scale. */
+@media (max-width: 23.4375rem) {
+  .idea__body {
+    font-size: var(--step-0);
+    line-height: 1.62;
+  }
+}
+
+/* The dash is part of the sentence, but it is punctuation and not a claim: a
+   step quieter than the copy keeps the first real word the loudest thing on
+   the line. Nothing geometric — the space that follows it in the markup is a
+   word separator and must stay exactly one space wide. */
+.idea__dash {
+  color: var(--text-mute);
+}
+
+.idea + .idea {
+  margin-block-start: var(--idea-sep);
+}
+
+/* The leader between the two ideas. Identical gradient stops to the one on
+   .section__index::after — same page, same rule. */
+.idea + .idea::before {
+  content: "";
+  display: block;
+  block-size: 1px;
+  margin-block: var(--idea-sep);
+  background-image: linear-gradient(
+    90deg,
+    var(--line) 0%,
+    var(--line) 44%,
+    var(--line-soft) 72%,
+    transparent 98%
+  );
+}
+
+/* The block opens with a 14px marker rather than a paragraph, so it may sit
+   closer to its own head than a prose block does — from here down the pause
+   lives INSIDE the block, not above it. `:has()` is load-bearing; where it is
+   unsupported the section falls back to the standard title margin. */
+.section__title:has(+ .ideas) {
+  margin-block-end: clamp(1.1rem, 0.7rem + 1.6vw, 1.9rem);
+}
+
+/* ---- No gutter to hang in ----------------------------------------------
+   --shell-pad resolves to 0.6rem + 3.2vw, so the clear space outside the
+   spine is 9.6px + 3.2% of the viewport — 44.16px at 1080px, growing from
+   there (past 78rem the shell centres and the gutter widens further). Below
+   67.5rem that is not enough for a 33.6px offset plus the marker's own width
+   plus breathing room, so the marker comes in and takes its own line above
+   the term, exactly where a section's numeral would sit. */
+@media (max-width: 67.4375rem) {
+  .idea__num {
+    position: static;
+    display: block;
+    /* 0.7rem: enough that the marker is clearly not the first word of the term
+       below it, small enough that the pair still reads as one unit. */
+    margin-block-end: 0.7rem;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .idea + .idea::before {
+    background-image: linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--paper) 34%, transparent) 0%,
+      color-mix(in oklab, var(--paper) 34%, transparent) 82%,
+      transparent 100%
+    );
+  }
+}
+
+/* --------------------------------------------------------------------------
+   7. Masthead — a wordmark, not a bar
+   --------------------------------------------------------------------------
+   Deliberately NOT a glass slab: no backdrop-filter, because the hero canvas
+   animates underneath it and a fixed blur layer would force a re-blur on
+   every one of its frames. Instead a soft film scrim.
+
+   The scrim never goes to zero. Content scrolls underneath a fixed header,
+   and a fully transparent scrim let the card titles collide with the
+   wordmark halfway down the page. It only *weakens* on scroll — enough to
+   stop fighting the copy, not enough to stop doing its job.
+
+   The wordmark never disappears either: it recedes by COLOUR (paper-dim →
+   paper-mute, still 6.2:1 on the page) rather than by opacity, so it stays
+   legible, stays a 44px touch target, and stays in the tab order. Hiding it
+   would take the only "back to top" affordance out of reach halfway down an
+   essay.
+   -------------------------------------------------------------------------- */
+.masthead {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Padded past the type so the scrim has somewhere to fade out to. The tail
+     is deep on purpose: a body line at --step-1 is ~40px of line box, and it
+     passes UNDER this bar, so the scrim has to carry at least a full line
+     below the wordmark's baseline or the two collide as two fully readable
+     strings. 36px of tail was not enough — see the gradient stops below. */
+  padding-block: max(0.55rem, env(safe-area-inset-top)) clamp(3rem, 2.2rem + 1.6vw, 4.5rem);
+  pointer-events: none;
+}
+
+/* The scrim. Full strength over the hero, knocked back once you are reading. */
+.masthead::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--roast-900) 94%, transparent) 0%,
+    color-mix(in oklab, var(--roast-900) 93%, transparent) 52%,
+    color-mix(in oklab, var(--roast-900) 70%, transparent) 70%,
+    color-mix(in oklab, var(--roast-900) 34%, transparent) 88%,
+    transparent 100%
+  );
+}
+
+.masthead__mark {
+  position: relative;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 44px touch target in a small, quiet object. */
+  min-block-size: 2.75rem;
+  max-width: 100%;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--step--1);
+  /* Archivo Black caps read optically loose at this size without a hair of
+     tracking, and tight (never loose) once they go above 24px. */
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  hyphens: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .masthead::before {
+    transition: opacity 760ms var(--ease-out);
+  }
+  .masthead__mark {
+    transition: color 760ms var(--ease-out);
+  }
+}
+
+/* Scrolled state — driven by js/reveal.js via [data-scrolled] on <html>. */
+:root[data-scrolled] .masthead::before {
+  /* Once you are reading, the band goes OPAQUE through the wordmark's own row
+     (the mark sits at ~10–59% of an 89px band) instead of dissolving.
+     Measured at 1440/scrollY 600: a translucent scrim put the primary CTA's
+     own label #1a0c05 on #391c10 — 1.23:1, illegible. Darkening rescues light
+     text but destroys dark text, so NO translucent value fixes both; only
+     occlusion can. At rest nothing is behind the band, so it keeps its
+     dissolve and the hero stays open. */
+  background-image: linear-gradient(
+    to bottom,
+    var(--roast-900) 0%,
+    var(--roast-900) 58%,
+    color-mix(in oklab, var(--roast-900) 70%, transparent) 72%,
+    color-mix(in oklab, var(--roast-900) 34%, transparent) 88%,
+    transparent 100%
+  );
+  opacity: 1;
+}
+:root[data-scrolled] .masthead__mark {
+  color: var(--text-mute);
+}
+
+.masthead__mark:hover,
+.masthead__mark:focus-visible {
+  color: var(--text);
+}
+
+/* --------------------------------------------------------------------------
+   8. Footer — rhythm floor only. The plate, the rules and all of the type
+      belong to the blocks track (which loads after this file and wins on
+      equal specificity). This exists so the page still ends with air if
+      those rules ever change. Deliberately NO top border here: the booking
+      plate already ends on a hard tonal edge, and a hairline on that same
+      line would read as a mistake.
+   -------------------------------------------------------------------------- */
+#footer {
+  padding-block: clamp(3rem, 1.5rem + 5vw, 5.5rem) clamp(2.5rem, 1.5rem + 3vw, 4rem);
+}
+
+.footer__sign {
+  font-family: var(--font-body);
+  font-size: var(--step--1);
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  color: var(--text-mute);
+  text-wrap: pretty;
+}
+
+/* --------------------------------------------------------------------------
+   9. Scroll reveal — the hidden state, and every way out of it
+   --------------------------------------------------------------------------
+   Content is visible BY DEFAULT. The rule below only bites once js/reveal.js
+   has armed it by setting [data-reveal-armed="on"] on <html>, which it does
+   synchronously before its first await. So:
+
+     · no JS at all            → nothing is ever hidden
+     · reveal.js throws        → the attribute is removed again (see the JS)
+     · @media (scripting:none) → hidden state is cancelled outright
+     · prefers-reduced-motion  → hidden state is cancelled outright
+
+   The arm flag is deliberately NOT called `data-reveal`: that attribute is
+   the public contract other tracks read, and putting it on <html> would make
+   the root element look like a reveal target to every other selector.
+   -------------------------------------------------------------------------- */
+:root[data-reveal-armed="on"] [data-reveal]:not(.is-in),
+:root[data-reveal-armed="on"] [data-reveal-stagger] > *:not(.is-in) {
+  opacity: 0;
+}
+
+/* `opacity: 0` does NOT remove anything from the tab order or the a11y tree, so
+   a keyboard user can land on an invisible target and hear it announced with no
+   focus indicator anywhere on screen. Anything that takes focus reveals
+   immediately. */
+:root[data-reveal-armed="on"] [data-reveal]:focus-within,
+:root[data-reveal-armed="on"] [data-reveal-stagger] > *:focus-within {
+  opacity: 1;
+  translate: none;
+}
+
+@media (scripting: none) {
+  [data-reveal],
+  [data-reveal-stagger] > * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* Paper gets the whole page, always. */
+@media print {
+  [data-reveal],
+  [data-reveal-stagger] > * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal],
+  [data-reveal-stagger] > * {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* The masthead snaps between states instead of fading. */
+  .masthead::before,
+  .masthead__mark {
+    transition: none !important;
+  }
+}

@@ -1,0 +1,502 @@
+/* ==========================================================================
+   BLOCKS — [5] the booking statement (#talk) and [6] the page's ending (#footer)
+   Owned by the BOOKING & FOOTER track. Loaded last, so equal-specificity
+   rules here win over sections.css / episodes.css / base.css.
+
+   Two ideas, and nothing else:
+
+     1. THE BOOKING BLOCK IS A SURFACE, NOT A SECTION. It leaves the page
+        ground, lifts into a warm raised plate, and is bounded by two hairlines
+        aligned to the content spine. The ember appears exactly three times —
+        once in the ground colour, once in the horizon line, once as a pool of
+        light behind the action — and nowhere else. Restraint is the confidence.
+
+     2. THE FOOTER IS A CLOSING STATEMENT. Three Archivo Black links at one
+        moderate step, read as a single line of destinations rather than three
+        menu items, then one warm human sentence under a hairline.
+
+   SCOPE NOTES (dependencies on files this track does not own):
+     · .section / .shell come from css/sections.css. `.section` carries NO
+       inline padding — all horizontal rhythm comes from `.shell { padding-inline:
+       var(--shell-pad) }` — which is what lets the #talk rules below line up
+       with the text spine exactly:
+         rule width  = min(100% - 2·--shell-pad, --shell-max - 2·--shell-pad)
+       If a future edit ever adds `padding-inline` to `.section`, that formula
+       has to become `100% - 2·(--section-inline)`.
+     · `main > .section:last-of-type` (0,2,1) beats a bare `.section--talk`
+       (0,1,0) on padding-block-end, so the block-level padding here is scoped
+       to #talk / #footer — an ID — which outranks it.
+   ========================================================================== */
+
+/* ==========================================================================
+   [5] #talk — "Talk to me one-on-one"
+   ========================================================================== */
+
+#talk {
+  position: relative;
+  isolation: isolate;
+  /* More air than a reading section: this is where the page stops arguing.
+     The trailing gap is still generous, but the footer carries its own
+     top padding — together they put ~215px between the last action on the
+     page and the first link, which is enough to feel like an ending without
+     becoming a hole. */
+  padding-block: calc(var(--section-gap) * 0.62) calc(var(--section-gap) * 0.8);
+  /* `.section` pays its whole vertical gap up FRONT (css/sections.css §2), which
+     is right for text-to-text but means a following *surface* supplies no
+     divider of its own until its own edge — so the plate's tonal edge used to
+     arrive hard against the last line of #ideas with 0px of page ground, while
+     187px of warm plate sat empty above the heading. Split the pause in half:
+     half as ground before the plate, half inside it. Total air is unchanged;
+     the distribution was what read as broken. */
+  margin-block-start: calc(var(--section-gap) * 0.5);
+  /* A warm, slightly lifted ground. 90/10 with the ember is a tonal shift you
+     feel before you can name it — no visible tint, just "this one is different". */
+  background-color: color-mix(in oklab, var(--roast-850) 90%, var(--ember));
+}
+
+/* ---- The atmosphere: two hairlines, dissolved at both ends ---------------
+   Built as gradients on a single layer rather than a border box for two
+   reasons: the lines can fade out at each end (a hard-cropped frame reads as a
+   template), and the whole layer can be faded in once, slowly, by JS.
+
+   Width is the content column, exactly:
+     min(100% - 2·--shell-pad, --shell-max - 2·--shell-pad)
+   so the hairlines start and stop on the same spine as every heading. */
+#talk::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    /* 1. The ember horizon the block opens with — the only place the accent is
+          allowed to behave like a light source. */
+    linear-gradient(
+      90deg,
+      transparent 2%,
+      color-mix(in oklab, var(--ember) 14%, transparent) 15%,
+      color-mix(in oklab, var(--ember-hot) 66%, transparent) 46%,
+      color-mix(in oklab, var(--ember-hot) 66%, transparent) 54%,
+      color-mix(in oklab, var(--ember) 14%, transparent) 85%,
+      transparent 98%
+    ),
+    /* 2. The cool hairline the block settles onto. Asymmetric on purpose: the
+          section arrives warm and leaves quiet, so the footer reads as a
+          change of key rather than more of the same. */
+    linear-gradient(
+      90deg,
+      transparent 4%,
+      var(--line) 26%,
+      var(--line) 74%,
+      transparent 96%
+    ),
+    /* 3. A directional wash, 6% at most — not a gradient you can point at, just
+          enough that the open right-hand half of the block is lit rather than
+          flat, the way a wall is lit by a window somewhere off to the left. */
+    linear-gradient(
+      104deg,
+      color-mix(in oklab, var(--ember) 7%, transparent) 0%,
+      transparent 58%
+    );
+  background-repeat: no-repeat;
+  background-size:
+    min(calc(100% - 2 * var(--shell-pad)), calc(var(--shell-max) - 2 * var(--shell-pad))) 1px,
+    min(calc(100% - 2 * var(--shell-pad)), calc(var(--shell-max) - 2 * var(--shell-pad))) 1px,
+    100% 100%;
+  background-position: 50% 0, 50% 100%, 50% 50%;
+}
+
+/* ---- The one action ----------------------------------------------------- */
+
+.talk__cta {
+  position: relative;
+  isolation: isolate;
+  /* inline-flex, not block: the paragraph shrink-wraps to the button so the
+     pool of light below is centred on the ACTION. As a full-width block its
+     50% would be the middle of an empty column, and the glow would drift a
+     whole measure to the right of the thing it is meant to be lighting. */
+  display: inline-flex;
+  align-items: center;
+  margin-block-start: clamp(2.5rem, 5.5vw, 4rem);
+}
+
+/* REMOVED — the "pool of warm light" behind the CTA.
+   Measured by A/B (identical page, glow on vs off, grain disabled): the only
+   thing this layer contributed was a 193x65px crescent hanging 49px BELOW the
+   pill. Delta above the pill, left of it and right of it: exactly 0,0,0. The
+   radial is an ellipse of rx144/ry79 behind a 200x67 pill that occludes all
+   but the lower skirt, so what survived read as bloom on a render rather than
+   as light on a surface. #talk .btn--lg already carries its own ember spill
+   (0 30px 54px -28px), which does the job properly.
+   This also breaks the file's own stated ember budget, which claimed the accent
+   appears "nowhere else" — it was a 4th use, not a 3rd. */
+
+/* Contextualise the base.css button — never redeclare it. On a lifted warm
+   ground the shared pill needs physical weight, or it reads as a chip. */
+#talk .btn--lg {
+  min-height: 3.75rem;
+  padding-inline: 1.95em;
+  box-shadow:
+    /* top edge catching the room light */
+    inset 0 1px 0 color-mix(in oklab, var(--paper) 26%, transparent),
+    /* the pill sitting on the surface, not floating above it */
+    0 2px 8px -4px rgb(0 0 0 / 0.55),
+    /* its own warmth spilling onto the plate */
+    0 30px 54px -28px color-mix(in oklab, var(--ember) 82%, transparent);
+}
+
+/* On a phone the action becomes the full measure of the column: one
+   unambiguous target, centred, with the arrow as the only flourish.
+   The container goes block-level here — a shrink-to-fit inline-flex would give
+   the button's `inline-size: 100%` nothing to resolve against and collapse it
+   back to the width of the words. */
+@media (max-width: 27rem) {
+  .talk__cta {
+    display: flex;
+    justify-content: center;
+  }
+
+  /* NOT `inline-size: 100%`. Measured across 320→1440: stretching the pill to
+     the full measure leaves only 30–41% of its width carrying anything — at
+     390px that is 115.7px of dead burnt orange either side of a 114px label —
+     and because the stretch is bounded at 27rem while the natural pill is not,
+     the button's width jumps 385.2px -> 180.4px across a SINGLE pixel of
+     viewport at 432→433px. That band is where the iPhone 14/15 (430pt), many
+     Androids (432dp) and foldables all live. One shape at every width: the pill
+     keeps its natural width and centres in the column. */
+  .talk__cta .btn--lg {
+    inline-size: auto;
+    justify-content: center;
+  }
+}
+
+/* No hover rule for the shadow on purpose. base.css already lifts the pill and
+   warms its fill; re-declaring its `transition` list just to animate a second
+   shadow would mean duplicating primitives this track does not own. The glow is
+   constant, which is what makes it read as ambient rather than as a reward. */
+
+/* Focus: the shared ember-hot ring separates from the ember button it surrounds
+   by only 1.3:1, so on this one surface the ring is stepped up to paper
+   (3.4:1 against the button, ~13:1 against the ground). Stronger, not removed. */
+#talk .btn--lg:focus-visible {
+  outline-color: var(--paper);
+  outline-offset: 4px;
+}
+
+/* ==========================================================================
+   [6] #footer — three links, one sentence
+   ========================================================================== */
+
+#footer {
+  position: relative;
+  isolation: isolate;
+  /* The page settles onto its deepest ground. The faint ember bleed at the top
+     edge picks up the pool of light the booking block ends on, so the two
+     blocks read as one continuous closing movement. */
+  background-color: var(--roast-950);
+  background-image: radial-gradient(
+    78% 118% at 50% 0%,
+    color-mix(in oklab, var(--ember) 9%, transparent) 0%,
+    color-mix(in oklab, var(--ember) 2%, transparent) 44%,
+    transparent 76%
+  );
+}
+
+.footer__shell {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2rem, 4.5vw, 3.25rem);
+}
+
+/* ---- The destinations --------------------------------------------------- */
+
+.footer__nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: clamp(1.6rem, 4vw, 3.5rem);
+  padding-block-end: clamp(1.5rem, 3.5vw, 2.25rem);
+  border-block-end: 1px solid var(--line-soft);
+}
+
+.footer__link {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4em;
+  /* Touch target first, type second. */
+  min-block-size: 44px;
+  padding-block: 0.24em;
+
+  font-family: var(--font-display);
+  font-weight: 400;
+  /* One step below a section head: big enough to be the structural end of the
+     page, quiet enough that it never argues with the copy above it. */
+  font-size: var(--step-2);
+  line-height: 1.14;
+  letter-spacing: var(--tracking-display);
+  color: var(--paper);
+}
+
+/* A hairline that grows from the left on hover and is absent at rest — the
+   links are already unmistakably links at this weight, so a permanent rule
+   would only be a second line competing with the one under the nav. */
+.footer__link::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -0.16em;
+  block-size: 1px;
+  background-color: currentColor;
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+
+/* Decorative. Paper-mute is 6.3:1 on the footer ground — well over the 4.5:1
+   floor — and ember-hot is 8.1:1, so the arrow keeps its contrast at both
+   ends of the interaction. */
+.footer__arrow {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 0.66em;
+  line-height: 1;
+  color: var(--paper-mute);
+  /* The arrow glyph carries a wide left side bearing; pull it back so the gap
+     reads as one space instead of two. */
+  translate: -0.08em 0;
+}
+
+/* Every transition this track owns, in one place, and only where motion is
+   allowed. Under `reduce` the colour changes are instantaneous and nothing
+   translates or scales — the movement does not. The rule itself does NOT
+   survive: measured under reduce, the hover ::after stays at opacity 0.8 with
+   `scaleX(0)`, which paints nothing. Colour still changes, which is a
+   sufficient non-motion affordance; `prefers-contrast: more` makes the rule
+   permanent below. */
+@media (prefers-reduced-motion: no-preference) {
+  .footer__link {
+    transition: color var(--dur-mid) var(--ease-out);
+  }
+
+  .footer__arrow {
+    transition:
+      translate 620ms var(--ease-out),
+      color var(--dur-mid) var(--ease-out);
+  }
+
+  .footer__link::after {
+    transition:
+      transform 620ms var(--ease-out),
+      opacity 420ms var(--ease-out);
+  }
+}
+
+/* Pointer-only affordances. On touch the arrow simply sits there, which is the
+   honest reading — it is decoration, and the word is the link. */
+@media (hover: hover) and (pointer: fine) {
+  .footer__link:hover {
+    color: var(--ember-hot);
+  }
+
+  .footer__link:hover .footer__arrow {
+    color: var(--ember-hot);
+  }
+
+  .footer__link:hover::after {
+    opacity: 0.8;
+  }
+}
+
+/* Motion-gated so nothing translates and nothing scales under reduce. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .footer__link:hover .footer__arrow {
+    translate: 0.3em 0;
+  }
+
+  .footer__link:hover::after {
+    transform: scaleX(1);
+  }
+}
+
+/* Below 640px three display links no longer hold one line without crowding, so
+   they become a list: full-measure rows, arrow to the right edge, a hairline
+   between each. Same type, same spine, no shrink. */
+@media (max-width: 40rem) {
+  .footer__nav {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    column-gap: 0;
+    padding-block-end: 0;
+    border-block-end: 0;
+  }
+
+  .footer__link {
+    align-items: center;
+    justify-content: space-between;
+    inline-size: 100%;
+    padding-block: 0.9rem;
+    border-block-end: 1px solid var(--line-soft);
+  }
+
+  /* The gutter shrinks with the viewport, so how far the ember mark hangs into
+     it has to shrink with it — at 390px a full 0.85rem would put the dot 11px
+     from the edge of the screen instead of 14px from the text. */
+  .footer__sign::before {
+    left: -0.5rem;
+  }
+}
+
+/* ---- The human close --------------------------------------------------- */
+
+.footer__sign {
+  /* The ember mark hangs in the gutter, so the sentence itself has to sit
+     exactly on the column. Hence position: relative here and an absolutely
+     positioned ::before below — an in-flow bullet would indent the first line
+     and knock the page's one alignment spine out by its own width. */
+  position: relative;
+
+  font-family: var(--font-body);
+  font-weight: 400;
+  /* A step up from meta text and a step down from body copy: the last thing
+     you read should be a person, not a caption. */
+  font-size: var(--step-0);
+  line-height: 1.55;
+  letter-spacing: 0.004em;
+  color: var(--paper-dim);
+  /* `pretty` alone leaves a two-word widow at 320px — measured:
+     "Thanks for stopping by. See you" / "next week." — because there is no
+     next candidate to pull down. `balance` evens the two lines instead. One
+     line at 390 and 1440, so this only acts at the narrow edge. */
+  text-wrap: balance;
+}
+
+/* The shared ember-hot ring (base.css) is invisible on a link that is ALSO
+   hovered, because the link's own hover colour is ember-hot — a
+   focus+hover state ends up ring-on-fill. Step the ring to paper on the footer
+   links, as #talk .btn--lg already does, and widen the offset so the ring
+   never crosses the hover hairline (which extends 6.8px past the text). */
+.footer__link:focus-visible {
+  outline-color: var(--paper);
+  outline-offset: 8px;
+  border-radius: var(--r-sm);
+}
+
+/* One small ember mark — the only ember in the whole footer — hung outside the
+   column, level with the centre of the x.
+
+   `top: 0.72em` puts the dot's centre at 0.889em from the top of the first
+   line box: Inter at 18.08px/28.02px puts the baseline at 1.162em and the
+   centre of an x at 0.889em, and the dot's own half-height is 0.166em. If a
+   future font shifts the metric the dot is out by a millimetre and nothing
+   else moves — it is decoration, and it carries no meaning. */
+.footer__sign::before {
+  content: "";
+  position: absolute;
+  left: -0.85rem;
+  top: 0.72em;
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background-color: var(--ember);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--ember) 18%, transparent);
+}
+
+/* ==========================================================================
+   ENTRANCE — armed by js/blocks.js, nothing hidden without it
+   ----------------------------------------------------------------------------
+   The finished state above IS the resting state. js/blocks.js adds .bl-in
+   (the hidden state) and then .bl-on (the played state). No JS, a failed
+   module, or scripting:none all leave the page fully readable.
+   ========================================================================== */
+
+.bl-in {
+  opacity: 0;
+  translate: 0 1.05rem;
+  transition:
+    opacity 1150ms var(--ease-out),
+    translate 1150ms var(--ease-out);
+  transition-delay: calc(var(--i, 0) * 110ms);
+}
+
+.bl-on {
+  opacity: 1;
+  translate: 0 0;
+}
+
+/* Cheap-Android proxy: opacity only, no travel, no stagger. */
+.bl-in--calm {
+  translate: none;
+  transition: opacity 320ms linear;
+  transition-delay: 0ms;
+}
+
+/* A keyboard user must never land on an invisible target. */
+.bl-in:focus-within,
+.bl-in:focus-visible {
+  opacity: 1;
+  translate: none;
+}
+
+#talk.bl-lit::after {
+  opacity: 0;
+  transition: opacity 1500ms var(--ease-out);
+}
+
+#talk.bl-on::after {
+  opacity: 1;
+}
+
+@media (scripting: none) {
+  .bl-in,
+  #talk.bl-lit::after {
+    opacity: 1 !important;
+    translate: none !important;
+    transition: none !important;
+  }
+}
+
+/* Reduce switched on — including mid-session, after something was armed: take
+   every transform and every transition away and show the content now. */
+@media (prefers-reduced-motion: reduce) {
+  .bl-in,
+  #talk.bl-lit::after {
+    opacity: 1 !important;
+    translate: none !important;
+    transition: none !important;
+  }
+}
+
+/* ==========================================================================
+   High contrast — lift the quiet parts, never the structure
+   ========================================================================== */
+
+@media (prefers-contrast: more) {
+  /* Darker, not lighter: in this mode the ground has to move away from the
+     text, and --accent (the chapter numeral the type track puts on this block)
+     sits on it — it only clears 4.5:1 on a ground at or below the page's. */
+  #talk {
+    background-color: color-mix(in oklab, var(--roast-850) 62%, var(--roast-950));
+  }
+
+  #footer {
+    background-image: none;
+  }
+
+  /* Where a hairline would normally be a hover reward, make it permanent —
+     this mode needs the affordance visible without pointing at anything. */
+  .footer__link::after {
+    opacity: 0.55;
+    transform: scaleX(1);
+  }
+
+  .footer__arrow {
+    color: var(--paper-dim);
+  }
+
+  .footer__sign {
+    color: var(--paper);
+  }
+}
